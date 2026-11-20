@@ -1461,7 +1461,7 @@ try{const mf={name:'دفتري',short_name:'دفتري',lang:'ar',dir:'rtl',disp
 
 
 /* ---------- server: stats, updates, permissions ---------- */
-const APP_VER=24;                       /* = versionCode بالـ APK */
+const APP_VER=25;                       /* = versionCode بالـ APK */
 const API='https://daftari.1adam0adam0.workers.dev';   /* رابط السيرفر (Cloudflare Worker) */
 const FEAT={ai:['#aib','[data-tab=a]','[data-tab=q]'],rec:['#recb','[data-tab=r]'],yt:['#yt'],split:['#split'],pres:['#pres'],prn:['#prn'],tmr:['#tmr'],txt:['#txt']};
 async function did(){let d=await getFile('_did');if(!d){d=Array.from(crypto.getRandomValues(new Uint8Array(14)),b=>(b%36).toString(36)).join('');await putFile('_did',d)}return d}
@@ -1548,10 +1548,15 @@ function showUpd(j,link,must){
   d.innerHTML='<div style="background:var(--sf);color:var(--tx);border-radius:18px;padding:18px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.4)"><h3 style="margin:0">🚀 يوجد تحديث جديد'+(j.versionName?' ('+esc(j.versionName)+')':'')+'</h3><p style="margin:0;font-size:14px;white-space:pre-wrap">'+'يرجى تحديث التطبيق عبر الزر أدناه للحصول على آخر نسخة.'+(j.notes?'\n\n'+esc(j.notes):'')+'</p><p style="margin:0;font-size:12px;color:var(--mu)">ملفاتك وملاحظاتك رح تبقى كما هي بعد التحديث.</p><button id="ugo" style="background:var(--ac);color:#fff;border-color:var(--ac)">تحديث الآن</button>'+(must?'':'<button id="ult">لاحقاً</button>')+'</div>';
   document.body.append(d);
   d.querySelector('#ugo').onclick=async()=>{
-    if(window.Android&&Android.open){Android.open(link);return}
     const b=d.querySelector('#ugo').parentNode;
-    try{await navigator.clipboard.writeText(link);toast('تم نسخ الرابط، افتحه بالمتصفح',4000)}catch(e){}
-    if(!b.querySelector('input')){const i=document.createElement('input');i.readOnly=true;i.value=link;i.style.cssText='width:100%;direction:ltr';b.append(i);i.select()}};
+    if(window.Android&&Android.open){try{Android.open(link)}catch(e){}}
+    else{try{window.open(link,'_blank','noopener')}catch(e){}}
+    let help=b.querySelector('#uhelp');if(!help){help=document.createElement('p');help.id='uhelp';help.style.cssText='margin:0;font-size:12px;color:var(--mu)';b.append(help)}
+    help.textContent='إذا ما فتح المتصفح تلقائياً، انسخي الرابط أدناه وافتحيه بمتصفح Chrome. بعد تنزيل APK افتحي الملف واختاري تثبيت.';
+    let i=b.querySelector('#ulink');if(!i){i=document.createElement('input');i.id='ulink';i.readOnly=true;i.style.cssText='width:100%;direction:ltr';b.append(i)}
+    i.value=link;i.select();
+    try{await navigator.clipboard.writeText(link);toast('تم نسخ رابط التحديث',4000)}catch(e){toast('انسخي الرابط الظاهر وافتحيه بالمتصفح',4000)}
+  };
   const l=d.querySelector('#ult');if(l)l.onclick=()=>d.remove();
 }
 
@@ -1790,7 +1795,7 @@ async function aiReq(msgs,sys,max,opt){
   if(!tok){const e=new Error(AIM_LOGIN);e.code='login';throw e}
   if(!apiOK()){const e=new Error('دفتري AI غير متصل بالسيرفر حالياً. تواصل مع الدعم.');e.code='off';limitCard(e);throw e}
   const body={id:await did(),token:tok,messages:(msgs||[]).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.content||'')})),
-    system:String(sys||''),max:Math.max(128,Math.min(parseInt(max)||1400,1200)),task:['board','exam','chat','ocr'].indexOf(opt.task)>=0?opt.task:'chat',ver:'2.4'};
+    system:String(sys||''),max:Math.max(128,Math.min(parseInt(max)||1400,1200)),task:['board','exam','chat','ocr'].indexOf(opt.task)>=0?opt.task:'chat',ver:'2.4.1'};
   if(opt.img)body.img=aiDataUrl(opt.img,'image/png');
   if(opt.audio)body.audio=aiDataUrl(opt.audio,'audio/webm');
   let r,j;const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
@@ -2136,7 +2141,7 @@ window.__daftariAI={open:aiOpen,close:aiClose,ask:t=>{inp.value=t;aiSend()},boar
    ========================================================= */
 (function(){
 'use strict';
-var D3={v:'2.4',ok:0};
+var D3={v:'2.4.1',ok:0};
 try{
   if(/[?&]plus=0/.test(location.search)){console.warn('[daftari+] معطّلة عبر ?plus=0');return;}
   if(window.__d3plus)return; window.__d3plus=D3;
@@ -2373,10 +2378,10 @@ function tipOfDay(){
 async function fetchMsgs(){
   var out=[tipOfDay()];
   var base=apiBase();
-  if(base&&base.indexOf('YOUR-WORKER')<0&&!C.ui.msgOff){
+  if(base&&base.indexOf('YOUR-WORKER')<0){
     try{
       var id=await did(),r=await fetch(base+'/api/messages?id='+encodeURIComponent(id),{cache:'no-store'});
-      if(r.status===404||r.status===405){C.ui.msgOff=1;persistUI();console.log('[daftari+] السيرفر الحالي ما فيه نقطة الرسائل — رسالة اليوم تشتغل محليًا')}
+      if(r.status===404||r.status===405){console.warn('[daftari+] مسار رسائل Worker غير متاح — ستتم إعادة المحاولة لاحقاً')}
       if(r.ok){
         var j=await r.json();
         if(j&&Array.isArray(j.msgs))out=out.concat(j.msgs.filter(function(m){return m&&m.text}));
@@ -2851,7 +2856,7 @@ function settingsMenu(){
     ['🧿','أزرار أكبر',function(){C.ui.big=C.ui.big?0:1;persistUI();applyA11y();settingsMenu()}],
     ['◐','تباين أعلى للحدود',function(){C.ui.hc=C.ui.hc?0:1;persistUI();applyA11y();settingsMenu()}],
     ['🗑','تفريغ سجل التقدم والخطة',async function(){C.log=[];C.plan={};persist('log');persist('plan');say('تم التفريغ');renderHome()}],
-    ['ℹ️','نسخة دفتري '+(typeof D3!=='undefined'?D3.v:'')+' (build 2.4)',function(){say('طبقة 2.3 مفعّلة ✅ — لا تغيّر شي من 2.2') }]
+    ['ℹ️','نسخة دفتري '+(typeof D3!=='undefined'?D3.v:'')+' (build 2.4.1)',function(){say('طبقة 2.3 مفعّلة ✅ — لا تغيّر شي من 2.2') }]
   ];
   try{menu('ضبط سريع',L)}catch(e){say('الضبط من شاشة دراستي')}
 }
@@ -3237,7 +3242,7 @@ async function boot(){
     setInterval(function(){try{showReminder(false)}catch(e){}},300000);
     setTimeout(function(){try{showReminder(false)}catch(e){}},12000);
     D3.features=done;D3.ok=1;
-    console.log('[daftari+] 2.4 مفعّلة',done);
+    console.log('[daftari+] 2.4.1 مفعّلة',done);
   }catch(e){
     console.warn('[daftari+] تعذّر تشغيل الطبقة الإضافية — التطبيق الأساسي يشتغل مثل أول',e);
     D3.error=String(e&&e.message||e);
